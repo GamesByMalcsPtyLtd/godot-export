@@ -61,6 +61,18 @@ inputs:
     description: A comma-separated list of export presets to export. If not specified, all presets will be exported.
     default: ''
     required: false
+  download_rcodesign:
+    description: If "true" the rcodesign tool will be downloaded and available for code signing macOS exports
+    default: false
+    required: false
+  rcodesign_version:
+    description: 'Sets the version of the rcodesign tool to download'
+    default: '0.29.0'
+    required: false
+  notary_api_key_path:
+    description: 'The relative path to an apple app store connect api key in .p8 format'
+    default: ''
+    required: false
     
 
 outputs:

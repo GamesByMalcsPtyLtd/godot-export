@@ -1,6 +1,7 @@
-import { exec, ExecOptions } from '@actions/exec';
+import { exec, ExecOptions, getExecOutput } from '@actions/exec';
 import * as core from '@actions/core';
 import { isFeatureAvailable, restoreCache, saveCache } from '@actions/cache';
+import { downloadTool, extractTar, extractZip } from '@actions/tool-cache';
 import * as io from '@actions/io';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -24,7 +25,10 @@ import {
   GODOT_EXPORT_TEMPLATES_PATH,
   CACHE_ACTIVE,
   GODOT_PROJECT_PATH,
+  DOWNLOAD_RCODESIGN,
+  RCODESIGN_VERSION,
 } from './constants';
+import { autoConvertAppStoreConnectAPIKey, waitForNotarizationThenStaple } from './rcodesign';
 
 const GODOT_EXECUTABLE = 'godot_executable';
 const GODOT_ZIP = 'godot.zip';
@@ -33,7 +37,13 @@ const EDITOR_SETTINGS_FILENAME = USE_GODOT_3 ? 'editor_settings-3.tres' : 'edito
 
 const GODOT_TEMPLATES_PATH = path.join(GODOT_WORKING_PATH, 'templates');
 
+const NOTARIZATION_UUID_REGEX =
+  /^Notarization: Notarization request UUID: "([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})"$/m;
+
 let godotExecutablePath: string;
+
+let rcodesignExecutablePath: string;
+let rcodesignKeyFilePath = '';
 
 async function exportBuilds(): Promise<BuildResult[]> {
   if (!hasExportPresets()) {
@@ -47,12 +57,23 @@ async function exportBuilds(): Promise<BuildResult[]> {
   await downloadGodot();
   core.endGroup();
 
+  if (DOWNLOAD_RCODESIGN) {
+    core.startGroup('🖋 Downloading rcodesign');
+    await downloadRcodesign(RCODESIGN_VERSION);
+    core.endGroup();
+    rcodesignKeyFilePath = await autoConvertAppStoreConnectAPIKey(rcodesignExecutablePath);
+  }
+
   core.startGroup('🔍 Adding Editor Settings');
   await addEditorSettings();
   core.endGroup();
 
   if (WINE_PATH) {
     configureWindowsExport();
+  }
+
+  if (DOWNLOAD_RCODESIGN) {
+    configureMacOSExport();
   }
 
   configureAndroidExport();
@@ -126,6 +147,82 @@ async function downloadExecutable(): Promise<void> {
   const cacheKey = `godot-executable-${GODOT_DOWNLOAD_URL}`;
   const restoreKey = `godot-executable-${GODOT_DOWNLOAD_URL}`;
   await downloadFile(executablePath, GODOT_DOWNLOAD_URL, cacheKey, restoreKey);
+}
+
+async function downloadRcodesign(version: string): Promise<void> {
+  let url = `https://github.com/indygreg/apple-platform-rs/releases/download/apple-codesign%2F${version}/apple-codesign-${version}-`;
+  let directory = `apple-codesign-${version}-`;
+  switch (process.platform) {
+    case 'darwin':
+      url += 'macos-universal.tar.gz';
+      directory += 'macos-universal';
+      break;
+    case 'linux':
+      switch (process.arch) {
+        case 'arm64':
+          url += 'aarch64-unknown-linux-musl.tar.gz';
+          directory += 'aarch64-unknown-linux-musl';
+          break;
+        case 'x64':
+          url += 'x86_64-unknown-linux-musl.tar.gz';
+          directory += 'x86_64-unknown-linux-musl';
+          break;
+        default:
+          throw new Error(`Unsupported Linux Architecture: ${process.arch}`);
+      }
+      break;
+    case 'win32':
+      if (process.arch === 'x64') {
+        url += 'x86_64-pc-windows-msvc.zip';
+        directory += 'x86_64-pc-windows-msvc';
+      } else {
+        throw new Error(`Unsupported Windows Architecture: ${process.arch}`);
+      }
+      break;
+    default:
+      throw new Error(`Unspported operating system: ${process.platform}`);
+  }
+
+  const toolDir = 'rcodesign';
+  const rcodesignDir = `${toolDir}/${directory}/`;
+  const cacheKey = `rcodesign-${directory}`;
+  const restoreKey = cacheKey;
+
+  let restoredFromCache = false;
+
+  if (CACHE_ACTIVE && isCacheFeatureAvailable()) {
+    const cacheHit = await restoreCache([rcodesignDir], cacheKey, [restoreKey]);
+    if (cacheHit) {
+      core.info(`Restored rcodesign from ${cacheHit}`);
+      restoredFromCache = true;
+    }
+  }
+
+  if (!restoredFromCache) {
+    core.info(`Downloading rcodesign from ${url}`);
+    const toolPath = await downloadTool(url);
+
+    if (url.endsWith('.tar.gz')) {
+      await extractTar(toolPath, toolDir);
+    } else {
+      await extractZip(toolPath, toolDir);
+    }
+
+    if (CACHE_ACTIVE && isCacheFeatureAvailable()) {
+      await saveCache([rcodesignDir], cacheKey);
+    }
+  }
+
+  let exePath = `${rcodesignDir}rcodesign`;
+  if (process.platform === 'win32') {
+    exePath += '.exe';
+  }
+
+  rcodesignExecutablePath = path.resolve(exePath);
+  core.info(`Rcodesign absolute path: ${rcodesignExecutablePath}`);
+  if (!fs.existsSync(rcodesignExecutablePath)) {
+    throw new Error(`rcodesign does not exist at: ${rcodesignExecutablePath}`);
+  }
 }
 
 function isGhes(): boolean {
@@ -272,6 +369,7 @@ function getEmojiNumber(number: number): string {
 
 async function doExport(): Promise<BuildResult[]> {
   const buildResults: BuildResult[] = [];
+  const notaryPromises: Promise<void>[] = [];
   core.info(`🎯 Using project file at ${GODOT_PROJECT_FILE_PATH}`);
 
   let exportPresetIndex = 0;
@@ -314,10 +412,24 @@ async function doExport(): Promise<BuildResult[]> {
       args.push('--verbose');
     }
 
-    const result = await exec(godotExecutablePath, args);
-    if (result !== 0) {
+    const result = await getExecOutput(godotExecutablePath, args);
+    if (result.exitCode !== 0) {
       core.endGroup();
       throw new Error('1 or more exports failed');
+    }
+
+    // TODO: This didn't seem to get triggered. The regex is also probably wrong
+    if (preset.platform === 'macOS' && preset.options['notarization/notarization'] === '1') {
+      // Go through the logs for the export, and try and find the UUID for the notarization
+      const uuidMatch = result.stdout.match(NOTARIZATION_UUID_REGEX);
+      if (uuidMatch === null) {
+        core.endGroup();
+        throw new Error('Could not find notarization uuid');
+      }
+      const submissionId = uuidMatch[1];
+      notaryPromises.push(
+        waitForNotarizationThenStaple(rcodesignExecutablePath, rcodesignKeyFilePath, submissionId, executablePath),
+      );
     }
 
     const directoryEntries = fs.readdirSync(buildDir);
@@ -331,6 +443,8 @@ async function doExport(): Promise<BuildResult[]> {
 
     core.endGroup();
   }
+
+  await Promise.all(notaryPromises);
 
   return buildResults;
 }
@@ -416,6 +530,22 @@ function configureWindowsExport(): void {
   const editorSettingsPath = path.join(GODOT_CONFIG_PATH, EDITOR_SETTINGS_FILENAME);
   linesToWrite.push(`export/windows/rcedit = "${rceditPath}"\n`);
   linesToWrite.push(`export/windows/wine = "${WINE_PATH}"\n`);
+
+  fs.writeFileSync(editorSettingsPath, linesToWrite.join(''), { flag: 'a' });
+
+  core.info(linesToWrite.join(''));
+  core.info(`Wrote settings to ${editorSettingsPath}`);
+  core.endGroup();
+}
+
+function configureMacOSExport(): void {
+  core.startGroup('📝 Appending rcodesign editor settings');
+  const linesToWrite: string[] = [];
+
+  core.info(`Writing rcodesign path to editor settings ${rcodesignExecutablePath}`);
+
+  const editorSettingsPath = path.join(GODOT_CONFIG_PATH, EDITOR_SETTINGS_FILENAME);
+  linesToWrite.push(`export/macos/rcodesign = "${rcodesignExecutablePath}"\n`);
 
   fs.writeFileSync(editorSettingsPath, linesToWrite.join(''), { flag: 'a' });
 

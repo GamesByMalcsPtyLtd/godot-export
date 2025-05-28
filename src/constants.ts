@@ -20,23 +20,33 @@ const DOWNLOAD_RCODESIGN = core.getBooleanInput('download_rcodesign');
 const RCODESIGN_VERSION = core.getInput('rcodesign_version');
 const NOTARY_API_KEY_PATH = core.getInput('notary_api_key_path');
 
-// Parse export targets
-const exportPresetsStr = core.getInput('presets_to_export').trim();
-let exportPresets: string[] | null = null;
-
-if (exportPresetsStr !== '') {
-  try {
-    // splitting by comma and trimming each target. Presets should not begin or end with a space.
-    exportPresets = exportPresetsStr.split(',').map(s => s.trim());
-    if (exportPresetsStr.length === 0) {
-      exportPresets = null;
-    }
-  } catch (error) {
-    core.warning('Malformed presets_to_export input. Exporting all presets by default.');
+function getCommaSeparatedInput(name: string): string[] | null {
+  const inputString = core.getInput(name).trim();
+  let input: string[] | null = null;
+  if (inputString !== '') {
+    input = inputString.split(',').map(s => s.trim());
+    if (input.length === 0) input = null;
   }
+  return input;
 }
 
+// Parse export targets
+let exportPresets: string[] | null = null;
+try {
+  exportPresets = getCommaSeparatedInput('presets_to_export');
+} catch (e) {
+  core.warning('Malformed presets_to_export input. Exporting all presets by default.');
+}
 const PRESETS_TO_EXPORT = exportPresets;
+
+// Parse license file paths
+let licenseFilePaths: string[] | null = null;
+try {
+  licenseFilePaths = getCommaSeparatedInput('license_file_paths');
+} catch (e) {
+  core.warning('Malformed license_file_paths input. No license files will be added to the export result.');
+}
+const LICENSE_FILE_PATHS = licenseFilePaths;
 
 const GODOT_WORKING_PATH = path.resolve(path.join(os.homedir(), '/.local/share/godot'));
 const GODOT_EXPORT_TEMPLATES_PATH = path.resolve(
@@ -79,4 +89,5 @@ export {
   DOWNLOAD_RCODESIGN,
   RCODESIGN_VERSION,
   NOTARY_API_KEY_PATH,
+  LICENSE_FILE_PATHS,
 };

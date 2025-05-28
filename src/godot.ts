@@ -27,6 +27,7 @@ import {
   GODOT_PROJECT_PATH,
   DOWNLOAD_RCODESIGN,
   RCODESIGN_VERSION,
+  LICENSE_FILE_PATHS,
 } from './constants';
 import { autoConvertAppStoreConnectAPIKey, waitForNotarizationThenStaple } from './rcodesign';
 
@@ -418,7 +419,6 @@ async function doExport(): Promise<BuildResult[]> {
       throw new Error('1 or more exports failed');
     }
 
-    // TODO: This didn't seem to get triggered. The regex is also probably wrong
     if (preset.platform === 'macOS' && preset.options['notarization/notarization'] === '1') {
       // Go through the logs for the export, and try and find the UUID for the notarization
       const uuidMatch = result.stdout.match(NOTARIZATION_UUID_REGEX);
@@ -431,6 +431,8 @@ async function doExport(): Promise<BuildResult[]> {
         waitForNotarizationThenStaple(rcodesignExecutablePath, rcodesignKeyFilePath, submissionId, executablePath),
       );
     }
+
+    await copyLicenseFiles(buildDir);
 
     const directoryEntries = fs.readdirSync(buildDir);
     buildResults.push({
@@ -593,6 +595,14 @@ async function importProject(): Promise<void> {
     core.warning(`Import appears to have failed. Continuing anyway, but exports may fail. ${error}`);
   }
   core.endGroup();
+}
+
+async function copyLicenseFiles(buildDir: string): Promise<void> {
+  if (!LICENSE_FILE_PATHS) return;
+  core.info(`Copying ${LICENSE_FILE_PATHS.length} license files to build`);
+  for (const filePath of LICENSE_FILE_PATHS) {
+    await io.cp(filePath, buildDir);
+  }
 }
 
 export { exportBuilds };

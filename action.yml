@@ -73,6 +73,10 @@ inputs:
     description: 'The relative path to an apple app store connect api key in .p8 format'
     default: ''
     required: false
+  license_file_paths:
+    description: A comma separated list of the paths to any license files that should be copied into the export output. Paths are relative to the root of the git repository
+    default: ''
+    required: false
     
 
 outputs:

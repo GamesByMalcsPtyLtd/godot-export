@@ -47,6 +47,7 @@ Define at least 1 export preset by going to `Project -> Export` in the Godot edi
 | `download_rcodesign`                  | If the [rcodesign](https://github.com/indygreg/apple-platform-rs/tree/main/apple-codesign) tool should be downloaded for code signing macOS exports                                                                                                                                  | `boolean` | `false`  | No       |
 | `rcodesign_version`                   | Specifies the version of the rcodesign tool to download                                                                                                                                                                                                                              | `string`  | `0.29.0` | No       |
 | `notary_api_key_path`                 | The path to a `.p8` App Store Connect API Key. When specified, and the corresponding macOS export environment variables are present, the API key will be converted to rcodesign's `.json` format                                                                                     | `string`  | `''`     | No       |
+| `license_file_paths`                  | A comma separated list of the paths to any license files that should be copied into the export output. Paths are relative to the root of the git repository                                                                                                                          | `string`  | `''`     | No       |
 
 ### Action Outputs
 

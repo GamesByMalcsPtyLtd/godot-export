@@ -94241,22 +94241,34 @@ const EXPORT_PACK_ONLY = core.getBooleanInput('export_as_pack');
 const DOWNLOAD_RCODESIGN = core.getBooleanInput('download_rcodesign');
 const RCODESIGN_VERSION = core.getInput('rcodesign_version');
 const NOTARY_API_KEY_PATH = core.getInput('notary_api_key_path');
+function getCommaSeparatedInput(name) {
+    const inputString = core.getInput(name).trim();
+    let input = null;
+    if (inputString !== '') {
+        input = inputString.split(',').map(s => s.trim());
+        if (input.length === 0)
+            input = null;
+    }
+    return input;
+}
 // Parse export targets
-const exportPresetsStr = core.getInput('presets_to_export').trim();
 let exportPresets = null;
-if (exportPresetsStr !== '') {
-    try {
-        // splitting by comma and trimming each target. Presets should not begin or end with a space.
-        exportPresets = exportPresetsStr.split(',').map(s => s.trim());
-        if (exportPresetsStr.length === 0) {
-            exportPresets = null;
-        }
-    }
-    catch (error) {
-        core.warning('Malformed presets_to_export input. Exporting all presets by default.');
-    }
+try {
+    exportPresets = getCommaSeparatedInput('presets_to_export');
+}
+catch (e) {
+    core.warning('Malformed presets_to_export input. Exporting all presets by default.');
 }
 const PRESETS_TO_EXPORT = exportPresets;
+// Parse license file paths
+let licenseFilePaths = null;
+try {
+    licenseFilePaths = getCommaSeparatedInput('license_file_paths');
+}
+catch (e) {
+    core.warning('Malformed license_file_paths input. No license files will be added to the export result.');
+}
+const LICENSE_FILE_PATHS = licenseFilePaths;
 const GODOT_WORKING_PATH = external_path_default().resolve(external_path_default().join(external_os_.homedir(), '/.local/share/godot'));
 const GODOT_EXPORT_TEMPLATES_PATH = external_path_default().resolve(external_path_default().join(external_os_.homedir(), process.platform === 'darwin'
     ? 'Library/Application Support/Godot/export_templates'
@@ -94661,7 +94673,6 @@ async function doExport() {
             core.endGroup();
             throw new Error('1 or more exports failed');
         }
-        // TODO: This didn't seem to get triggered. The regex is also probably wrong
         if (preset.platform === 'macOS' && preset.options['notarization/notarization'] === '1') {
             // Go through the logs for the export, and try and find the UUID for the notarization
             const uuidMatch = result.stdout.match(NOTARIZATION_UUID_REGEX);
@@ -94672,6 +94683,7 @@ async function doExport() {
             const submissionId = uuidMatch[1];
             notaryPromises.push(waitForNotarizationThenStaple(rcodesignExecutablePath, rcodesignKeyFilePath, submissionId, executablePath));
         }
+        await copyLicenseFiles(buildDir);
         const directoryEntries = external_fs_.readdirSync(buildDir);
         buildResults.push({
             preset,
@@ -94807,6 +94819,14 @@ async function importProject() {
         core.warning(`Import appears to have failed. Continuing anyway, but exports may fail. ${error}`);
     }
     core.endGroup();
+}
+async function copyLicenseFiles(buildDir) {
+    if (!LICENSE_FILE_PATHS)
+        return;
+    core.info(`Copying ${LICENSE_FILE_PATHS.length} license files to build`);
+    for (const filePath of LICENSE_FILE_PATHS) {
+        await io.cp(filePath, buildDir);
+    }
 }
 
 

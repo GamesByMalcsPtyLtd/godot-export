@@ -21,6 +21,14 @@ inputs:
     description: If "true", all exported files will be archived into a ".zip" file.
     default: false
     required: false
+  archive_prefix:
+    description: File name prefix that will be given to the ".zip" files when the archive_output option is true
+    default: ''
+    required: false
+  archive_postfix:
+    description: File name postfix that will be given to the ".zip" files when the archive_output option is true
+    default: ''
+    required: false
   archive_root_folder:
     description: If "true", files that are archived will be placed in a root folder within the archive.
     default: false

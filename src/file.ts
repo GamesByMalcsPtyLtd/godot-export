@@ -3,6 +3,8 @@ import path from 'path';
 import * as io from '@actions/io';
 import { exec } from '@actions/exec';
 import {
+  ARCHIVE_POSTFIX,
+  ARCHIVE_PREFIX,
   ARCHIVE_ROOT_FOLDER,
   GODOT_ARCHIVE_PATH,
   GODOT_PROJECT_PATH,
@@ -29,7 +31,7 @@ async function zipBuildResults(buildResults: BuildResult[]): Promise<void> {
 async function zipBuildResult(buildResult: BuildResult): Promise<void> {
   await io.mkdirP(GODOT_ARCHIVE_PATH);
 
-  const zipPath = path.join(GODOT_ARCHIVE_PATH, `${buildResult.sanitizedName}.zip`);
+  const zipPath = path.join(GODOT_ARCHIVE_PATH, `${ARCHIVE_PREFIX}${buildResult.sanitizedName}${ARCHIVE_POSTFIX}.zip`);
 
   const isMac = buildResult.preset.platform.toLowerCase() === 'mac osx';
   const endsInDotApp = !!buildResult.preset.export_path.match('.app$');

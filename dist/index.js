@@ -94225,6 +94225,8 @@ var external_os_ = __nccwpck_require__(857);
 
 
 const ARCHIVE_OUTPUT = core.getBooleanInput('archive_output');
+const ARCHIVE_PREFIX = core.getInput('archive_prefix');
+const ARCHIVE_POSTFIX = core.getInput('archive_postfix');
 const CACHE_ACTIVE = core.getBooleanInput('cache');
 // const GENERATE_RELEASE_NOTES = core.getBooleanInput('generate_release_notes');
 const GODOT_DOWNLOAD_URL = core.getInput('godot_executable_download_url');
@@ -94850,7 +94852,7 @@ async function zipBuildResults(buildResults) {
 }
 async function zipBuildResult(buildResult) {
     await io.mkdirP(GODOT_ARCHIVE_PATH);
-    const zipPath = external_path_default().join(GODOT_ARCHIVE_PATH, `${buildResult.sanitizedName}.zip`);
+    const zipPath = external_path_default().join(GODOT_ARCHIVE_PATH, `${ARCHIVE_PREFIX}${buildResult.sanitizedName}${ARCHIVE_POSTFIX}.zip`);
     const isMac = buildResult.preset.platform.toLowerCase() === 'mac osx';
     const endsInDotApp = !!buildResult.preset.export_path.match('.app$');
     // in case mac doesn't export a zip, move the file

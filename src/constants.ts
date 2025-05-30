@@ -3,6 +3,8 @@ import path from 'path';
 import * as os from 'os';
 
 const ARCHIVE_OUTPUT = core.getBooleanInput('archive_output');
+const ARCHIVE_PREFIX = core.getInput('archive_prefix');
+const ARCHIVE_POSTFIX = core.getInput('archive_postfix');
 const CACHE_ACTIVE = core.getBooleanInput('cache');
 // const GENERATE_RELEASE_NOTES = core.getBooleanInput('generate_release_notes');
 const GODOT_DOWNLOAD_URL = core.getInput('godot_executable_download_url');
@@ -65,6 +67,8 @@ const GODOT_PROJECT_FILE_PATH = path.join(GODOT_PROJECT_PATH, 'project.godot');
 
 export {
   ARCHIVE_OUTPUT,
+  ARCHIVE_PREFIX,
+  ARCHIVE_POSTFIX,
   ARCHIVE_ROOT_FOLDER,
   CACHE_ACTIVE,
   EXPORT_DEBUG,

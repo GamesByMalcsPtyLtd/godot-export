@@ -28,6 +28,7 @@ import {
   DOWNLOAD_RCODESIGN,
   RCODESIGN_VERSION,
   LICENSE_FILE_PATHS,
+  SM_FINGERPRINT,
 } from './constants';
 import { autoConvertAppStoreConnectAPIKey, waitForNotarizationThenStaple } from './rcodesign';
 
@@ -430,6 +431,25 @@ async function doExport(): Promise<BuildResult[]> {
       notaryPromises.push(
         waitForNotarizationThenStaple(rcodesignExecutablePath, rcodesignKeyFilePath, submissionId, executablePath),
       );
+    }
+
+    // Perform the windows code signing step
+    if (preset.platform === 'Windows Desktop' && SM_FINGERPRINT) {
+      core.info('Performing Windows Codesigning');
+      const signingArgs: string[] = [
+        'sign',
+        '--fingerprint',
+        SM_FINGERPRINT,
+        '--input',
+        buildDir,
+        '--config-file',
+        '/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64/pkcs11properties.cfg',
+      ];
+      const winCodesignResult = await exec('smctl', signingArgs);
+      if (winCodesignResult !== 0) {
+        core.endGroup();
+        throw new Error('Windows codesigning failed');
+      }
     }
 
     await copyLicenseFiles(buildDir);

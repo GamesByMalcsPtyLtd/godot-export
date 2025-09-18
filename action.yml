@@ -85,6 +85,10 @@ inputs:
     description: A comma separated list of the paths to any license files that should be copied into the export output. Paths are relative to the root of the git repository
     default: ''
     required: false
+  sm_fingerprint:
+    description: The fingerprint for codesigning with smctl
+    default: ''
+    required: false
     
 
 outputs:

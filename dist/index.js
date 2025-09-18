@@ -94243,6 +94243,7 @@ const EXPORT_PACK_ONLY = core.getBooleanInput('export_as_pack');
 const DOWNLOAD_RCODESIGN = core.getBooleanInput('download_rcodesign');
 const RCODESIGN_VERSION = core.getInput('rcodesign_version');
 const NOTARY_API_KEY_PATH = core.getInput('notary_api_key_path');
+const SM_FINGERPRINT = core.getInput('sm_fingerprint');
 function getCommaSeparatedInput(name) {
     const inputString = core.getInput(name).trim();
     let input = null;
@@ -94684,6 +94685,24 @@ async function doExport() {
             }
             const submissionId = uuidMatch[1];
             notaryPromises.push(waitForNotarizationThenStaple(rcodesignExecutablePath, rcodesignKeyFilePath, submissionId, executablePath));
+        }
+        // Perform the windows code signing step
+        if (preset.platform === 'Windows Desktop' && SM_FINGERPRINT) {
+            core.info('Performing Windows Codesigning');
+            const signingArgs = [
+                'sign',
+                '--fingerprint',
+                SM_FINGERPRINT,
+                '--input',
+                buildDir,
+                '--config-file',
+                '/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64/pkcs11properties.cfg',
+            ];
+            const winCodesignResult = await (0,exec.exec)('smctl', signingArgs);
+            if (winCodesignResult !== 0) {
+                core.endGroup();
+                throw new Error('Windows codesigning failed');
+            }
         }
         await copyLicenseFiles(buildDir);
         const directoryEntries = external_fs_.readdirSync(buildDir);

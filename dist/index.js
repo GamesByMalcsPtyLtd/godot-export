@@ -94243,7 +94243,7 @@ const EXPORT_PACK_ONLY = core.getBooleanInput('export_as_pack');
 const DOWNLOAD_RCODESIGN = core.getBooleanInput('download_rcodesign');
 const RCODESIGN_VERSION = core.getInput('rcodesign_version');
 const NOTARY_API_KEY_PATH = core.getInput('notary_api_key_path');
-const SM_FINGERPRINT = core.getInput('sm_fingerprint');
+const SM_KEYPAIR_ALIAS = core.getInput('sm_keypair_alias');
 function getCommaSeparatedInput(name) {
     const inputString = core.getInput(name).trim();
     let input = null;
@@ -94687,12 +94687,12 @@ async function doExport() {
             notaryPromises.push(waitForNotarizationThenStaple(rcodesignExecutablePath, rcodesignKeyFilePath, submissionId, executablePath));
         }
         // Perform the windows code signing step
-        if (preset.platform === 'Windows Desktop' && SM_FINGERPRINT) {
+        if (preset.platform === 'Windows Desktop' && SM_KEYPAIR_ALIAS) {
             core.info('Performing Windows Codesigning');
             const signingArgs = [
                 'sign',
-                '--fingerprint',
-                SM_FINGERPRINT,
+                '--keypair-alias',
+                SM_KEYPAIR_ALIAS,
                 '--input',
                 buildDir,
                 '--config-file',

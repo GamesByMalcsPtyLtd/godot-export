@@ -28,7 +28,7 @@ import {
   DOWNLOAD_RCODESIGN,
   RCODESIGN_VERSION,
   LICENSE_FILE_PATHS,
-  SM_FINGERPRINT,
+  SM_KEYPAIR_ALIAS,
 } from './constants';
 import { autoConvertAppStoreConnectAPIKey, waitForNotarizationThenStaple } from './rcodesign';
 
@@ -434,12 +434,12 @@ async function doExport(): Promise<BuildResult[]> {
     }
 
     // Perform the windows code signing step
-    if (preset.platform === 'Windows Desktop' && SM_FINGERPRINT) {
+    if (preset.platform === 'Windows Desktop' && SM_KEYPAIR_ALIAS) {
       core.info('Performing Windows Codesigning');
       const signingArgs: string[] = [
         'sign',
-        '--fingerprint',
-        SM_FINGERPRINT,
+        '--keypair-alias',
+        SM_KEYPAIR_ALIAS,
         '--input',
         buildDir,
         '--config-file',

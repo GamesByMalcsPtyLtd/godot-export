@@ -21,7 +21,7 @@ const EXPORT_PACK_ONLY = core.getBooleanInput('export_as_pack');
 const DOWNLOAD_RCODESIGN = core.getBooleanInput('download_rcodesign');
 const RCODESIGN_VERSION = core.getInput('rcodesign_version');
 const NOTARY_API_KEY_PATH = core.getInput('notary_api_key_path');
-const SM_FINGERPRINT = core.getInput('sm_fingerprint');
+const SM_KEYPAIR_ALIAS = core.getInput('sm_keypair_alias');
 
 function getCommaSeparatedInput(name: string): string[] | null {
   const inputString = core.getInput(name).trim();
@@ -95,5 +95,5 @@ export {
   RCODESIGN_VERSION,
   NOTARY_API_KEY_PATH,
   LICENSE_FILE_PATHS,
-  SM_FINGERPRINT,
+  SM_KEYPAIR_ALIAS,
 };

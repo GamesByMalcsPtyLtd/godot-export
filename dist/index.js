@@ -94697,6 +94697,8 @@ async function doExport() {
                 buildDir,
                 '--config-file',
                 '/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64/pkcs11properties.cfg',
+                '--exit-non-zero-on-fail',
+                '--verbose',
             ];
             const winCodesignResult = await (0,exec.exec)('smctl', signingArgs);
             if (winCodesignResult !== 0) {

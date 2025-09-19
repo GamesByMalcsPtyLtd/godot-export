@@ -94936,6 +94936,7 @@ async function main() {
         await moveBuildsToExportDirectory(buildResults, ARCHIVE_OUTPUT);
     }
     core.setOutput('build_directory', GODOT_BUILD_PATH);
+    core.setOutput('noslash_build_directory', GODOT_BUILD_PATH.substring(1));
     core.setOutput('archive_directory', GODOT_ARCHIVE_PATH);
     return 0;
 }

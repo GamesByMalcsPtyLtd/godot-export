@@ -94,6 +94,8 @@ inputs:
 outputs:
   build_directory:
     description: The directory containing exports prior to archiving (if applicable).
+  noslash_build_directory:
+    description: The directory containing exports prior to archiving (if applicable), without a starting slash
   archive_directory:
     description: The directory containing archived exports if "archive_output" is set.
 

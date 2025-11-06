@@ -29,6 +29,7 @@ import {
   RCODESIGN_VERSION,
   LICENSE_FILE_PATHS,
   SM_KEYPAIR_ALIAS,
+  CS_PROJ_NAME,
 } from './constants';
 import { autoConvertAppStoreConnectAPIKey, waitForNotarizationThenStaple } from './rcodesign';
 
@@ -369,6 +370,21 @@ function getEmojiNumber(number: number): string {
   return emojiNumber;
 }
 
+function createSigningArgs(input: string): string[] {
+  const signingArgs: string[] = [
+    'sign',
+    '--keypair-alias',
+    SM_KEYPAIR_ALIAS,
+    '--input',
+    input,
+    '--config-file',
+    '/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64/pkcs11properties.cfg',
+    '--exit-non-zero-on-fail',
+    '--verbose',
+  ];
+  return signingArgs;
+}
+
 async function doExport(): Promise<BuildResult[]> {
   const buildResults: BuildResult[] = [];
   const notaryPromises: Promise<void>[] = [];
@@ -436,21 +452,21 @@ async function doExport(): Promise<BuildResult[]> {
     // Perform the windows code signing step
     if (preset.platform === 'Windows Desktop' && SM_KEYPAIR_ALIAS) {
       core.info('Performing Windows Codesigning');
-      const signingArgs: string[] = [
-        'sign',
-        '--keypair-alias',
-        SM_KEYPAIR_ALIAS,
-        '--input',
-        buildDir,
-        '--config-file',
-        '/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64/pkcs11properties.cfg',
-        '--exit-non-zero-on-fail',
-        '--verbose',
-      ];
-      const winCodesignResult = await exec('smctl', signingArgs);
-      if (winCodesignResult !== 0) {
+      const exeSigningArgs = createSigningArgs(executablePath);
+      const exeCodesignResult = await exec('smctl', exeSigningArgs);
+      if (exeCodesignResult !== 0) {
         core.endGroup();
-        throw new Error('Windows codesigning failed');
+        throw new Error('Windows .exe codesigning failed');
+      }
+      if (CS_PROJ_NAME) {
+        const mainDllSigningArgs = createSigningArgs(
+          path.join(buildDir, `data_${CS_PROJ_NAME}_windows_x86_64/${CS_PROJ_NAME}.dll`),
+        );
+        const dllCodesignResult = await exec('smctl', mainDllSigningArgs);
+        if (dllCodesignResult !== 0) {
+          core.endGroup();
+          throw new Error('Windows .dll codesigning failed');
+        }
       }
     }
 

@@ -89,6 +89,10 @@ inputs:
     description: The keypair alias for codesigning with smctl
     default: ''
     required: false
+  csproj_name:
+    description: The name of the csproj file for C# projects 
+    default: ''
+    required: false
     
 
 outputs:

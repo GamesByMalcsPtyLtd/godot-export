@@ -94244,6 +94244,7 @@ const DOWNLOAD_RCODESIGN = core.getBooleanInput('download_rcodesign');
 const RCODESIGN_VERSION = core.getInput('rcodesign_version');
 const NOTARY_API_KEY_PATH = core.getInput('notary_api_key_path');
 const SM_KEYPAIR_ALIAS = core.getInput('sm_keypair_alias');
+const CS_PROJ_NAME = core.getInput('csproj_name');
 function getCommaSeparatedInput(name) {
     const inputString = core.getInput(name).trim();
     let input = null;
@@ -94635,6 +94636,20 @@ function getEmojiNumber(number) {
     }
     return emojiNumber;
 }
+function createSigningArgs(input) {
+    const signingArgs = [
+        'sign',
+        '--keypair-alias',
+        SM_KEYPAIR_ALIAS,
+        '--input',
+        input,
+        '--config-file',
+        '/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64/pkcs11properties.cfg',
+        '--exit-non-zero-on-fail',
+        '--verbose',
+    ];
+    return signingArgs;
+}
 async function doExport() {
     const buildResults = [];
     const notaryPromises = [];
@@ -94689,21 +94704,19 @@ async function doExport() {
         // Perform the windows code signing step
         if (preset.platform === 'Windows Desktop' && SM_KEYPAIR_ALIAS) {
             core.info('Performing Windows Codesigning');
-            const signingArgs = [
-                'sign',
-                '--keypair-alias',
-                SM_KEYPAIR_ALIAS,
-                '--input',
-                buildDir,
-                '--config-file',
-                '/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64/pkcs11properties.cfg',
-                '--exit-non-zero-on-fail',
-                '--verbose',
-            ];
-            const winCodesignResult = await (0,exec.exec)('smctl', signingArgs);
-            if (winCodesignResult !== 0) {
+            const exeSigningArgs = createSigningArgs(executablePath);
+            const exeCodesignResult = await (0,exec.exec)('smctl', exeSigningArgs);
+            if (exeCodesignResult !== 0) {
                 core.endGroup();
-                throw new Error('Windows codesigning failed');
+                throw new Error('Windows .exe codesigning failed');
+            }
+            if (CS_PROJ_NAME) {
+                const mainDllSigningArgs = createSigningArgs(external_path_.join(buildDir, `data_${CS_PROJ_NAME}_windows_x86_64/${CS_PROJ_NAME}.dll`));
+                const dllCodesignResult = await (0,exec.exec)('smctl', mainDllSigningArgs);
+                if (dllCodesignResult !== 0) {
+                    core.endGroup();
+                    throw new Error('Windows .dll codesigning failed');
+                }
             }
         }
         await copyLicenseFiles(buildDir);

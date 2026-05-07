@@ -22,6 +22,7 @@ const DOWNLOAD_RCODESIGN = core.getBooleanInput('download_rcodesign');
 const RCODESIGN_VERSION = core.getInput('rcodesign_version');
 const NOTARY_API_KEY_PATH = core.getInput('notary_api_key_path');
 const SM_KEYPAIR_ALIAS = core.getInput('sm_keypair_alias');
+const PKCS11_CONFIG_PATH = core.getInput('pkcs11_config_path');
 const CS_PROJ_NAME = core.getInput('csproj_name');
 
 function getCommaSeparatedInput(name: string): string[] | null {
@@ -38,7 +39,7 @@ function getCommaSeparatedInput(name: string): string[] | null {
 let exportPresets: string[] | null = null;
 try {
   exportPresets = getCommaSeparatedInput('presets_to_export');
-} catch (e) {
+} catch {
   core.warning('Malformed presets_to_export input. Exporting all presets by default.');
 }
 const PRESETS_TO_EXPORT = exportPresets;
@@ -47,7 +48,7 @@ const PRESETS_TO_EXPORT = exportPresets;
 let licenseFilePaths: string[] | null = null;
 try {
   licenseFilePaths = getCommaSeparatedInput('license_file_paths');
-} catch (e) {
+} catch {
   core.warning('Malformed license_file_paths input. No license files will be added to the export result.');
 }
 const LICENSE_FILE_PATHS = licenseFilePaths;
@@ -97,5 +98,6 @@ export {
   NOTARY_API_KEY_PATH,
   LICENSE_FILE_PATHS,
   SM_KEYPAIR_ALIAS,
+  PKCS11_CONFIG_PATH,
   CS_PROJ_NAME,
 };

@@ -1,4 +1,4 @@
-import { BuildResult } from './types/GodotExport';
+import { BuildResult } from './types/GodotExport.js';
 import path from 'path';
 import * as io from '@actions/io';
 import { exec } from '@actions/exec';
@@ -10,7 +10,7 @@ import {
   GODOT_PROJECT_PATH,
   RELATIVE_EXPORT_PATH,
   USE_PRESET_EXPORT_PATH,
-} from './constants';
+} from './constants.js';
 import * as core from '@actions/core';
 
 async function zipBuildResults(buildResults: BuildResult[]): Promise<void> {

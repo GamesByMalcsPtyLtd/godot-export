@@ -1,4 +1,5 @@
-import { exec, ExecOptions, getExecOutput } from '@actions/exec';
+import { exec, getExecOutput } from '@actions/exec';
+import type { ExecOptions } from '@actions/exec';
 import * as core from '@actions/core';
 import { isFeatureAvailable, restoreCache, saveCache } from '@actions/cache';
 import { downloadTool, extractTar, extractZip } from '@actions/tool-cache';
@@ -6,7 +7,7 @@ import * as io from '@actions/io';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as ini from 'ini';
-import { ExportPresets, ExportPreset, BuildResult } from './types/GodotExport';
+import { ExportPresets, ExportPreset, BuildResult } from './types/GodotExport.js';
 import sanitize from 'sanitize-filename';
 import {
   GODOT_CONFIG_PATH,
@@ -30,13 +31,15 @@ import {
   LICENSE_FILE_PATHS,
   SM_KEYPAIR_ALIAS,
   CS_PROJ_NAME,
-} from './constants';
-import { autoConvertAppStoreConnectAPIKey, waitForNotarizationThenStaple } from './rcodesign';
+  PKCS11_CONFIG_PATH,
+} from './constants.js';
+import { autoConvertAppStoreConnectAPIKey, waitForNotarizationThenStaple } from './rcodesign.js';
 
 const GODOT_EXECUTABLE = 'godot_executable';
 const GODOT_ZIP = 'godot.zip';
 const GODOT_TEMPLATES_FILENAME = 'godot_templates.tpz';
 const EDITOR_SETTINGS_FILENAME = USE_GODOT_3 ? 'editor_settings-3.tres' : 'editor_settings-4.tres';
+const ASSETS_FOLDER_PATH = '../assets/';
 
 const GODOT_TEMPLATES_PATH = path.join(GODOT_WORKING_PATH, 'templates');
 
@@ -95,7 +98,7 @@ function hasExportPresets(): boolean {
   try {
     const projectPath = path.resolve(RELATIVE_PROJECT_PATH);
     return fs.statSync(path.join(projectPath, 'export_presets.cfg')).isFile();
-  } catch (e) {
+  } catch {
     return false;
   }
 }
@@ -378,7 +381,7 @@ function createSigningArgs(input: string): string[] {
     '--input',
     input,
     '--config-file',
-    '/tmp/DigiCert One Signing Manager Tools/smtools-linux-x64/pkcs11properties.cfg',
+    PKCS11_CONFIG_PATH,
     '--exit-non-zero-on-fail',
     '--verbose',
   ];
@@ -450,7 +453,7 @@ async function doExport(): Promise<BuildResult[]> {
     }
 
     // Perform the windows code signing step
-    if (preset.platform === 'Windows Desktop' && SM_KEYPAIR_ALIAS) {
+    if (preset.platform === 'Windows Desktop' && SM_KEYPAIR_ALIAS && PKCS11_CONFIG_PATH) {
       core.info('Performing Windows Codesigning');
       const exeSigningArgs = createSigningArgs(executablePath);
       const exeCodesignResult = await exec('smctl', exeSigningArgs);
@@ -551,7 +554,7 @@ function getExportPresets(): ExportPreset[] {
 }
 
 async function addEditorSettings(): Promise<void> {
-  const editorSettingsDist = path.join(__dirname, EDITOR_SETTINGS_FILENAME);
+  const editorSettingsDist = path.resolve(import.meta.dirname, ASSETS_FOLDER_PATH, EDITOR_SETTINGS_FILENAME);
   await io.mkdirP(GODOT_CONFIG_PATH);
 
   const editorSettingsPath = path.join(GODOT_CONFIG_PATH, EDITOR_SETTINGS_FILENAME);
@@ -561,7 +564,7 @@ async function addEditorSettings(): Promise<void> {
 
 function configureWindowsExport(): void {
   core.startGroup('📝 Appending Wine editor settings');
-  const rceditPath = path.join(__dirname, 'rcedit-x64.exe');
+  const rceditPath = path.resolve(import.meta.dirname, ASSETS_FOLDER_PATH, 'rcedit-x64.exe');
   const linesToWrite: string[] = [];
 
   core.info(`Writing rcedit path to editor settings ${rceditPath}`);

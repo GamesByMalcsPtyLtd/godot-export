@@ -1,6 +1,6 @@
 import { exec } from '@actions/exec';
 import * as core from '@actions/core';
-import { NOTARY_API_KEY_PATH, GODOT_PROJECT_PATH } from './constants';
+import { NOTARY_API_KEY_PATH, GODOT_PROJECT_PATH } from './constants.js';
 import * as path from 'path';
 
 const GODOT_MACOS_NOTARIZATION_API_UUID = 'GODOT_MACOS_NOTARIZATION_API_UUID';

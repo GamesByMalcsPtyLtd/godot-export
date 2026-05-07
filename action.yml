@@ -38,15 +38,20 @@ inputs:
     default: false
     required: false
   relative_export_path:
-    description: If provided, exports will be moved to this directory relative to the root of the Git repository. This setting is overridden by "use_preset_export_path".
+    description:
+      If provided, exports will be moved to this directory relative to the root of the Git repository. This setting is
+      overridden by "use_preset_export_path".
     default: ''
     required: false
   use_preset_export_path:
-    description: If set to true, exports will be moved to directory defined in "export_presets.cfg" relative to "relative_project_path". Prioritized over "relative_export_path".
+    description:
+      If set to true, exports will be moved to directory defined in "export_presets.cfg" relative to
+      "relative_project_path". Prioritized over "relative_export_path".
     default: false
     required: false
   wine_path:
-    description: The absolute path to the wine binary. If specified, Godot will use this to run rcedit to update Windows exe icons.
+    description:
+      The absolute path to the wine binary. If specified, Godot will use this to run rcedit to update Windows exe icons.
     default: ''
     required: false
   export_debug:
@@ -58,13 +63,15 @@ inputs:
     default: false
     required: false
   use_godot_3:
-    description: "Build using Godot 3 executable (NOTE: `godot_executable_download_url` and `godot_export_templates_download_url` still need to be configured to download the correct version.)"
+    description:
+      'Build using Godot 3 executable (NOTE: `godot_executable_download_url` and `godot_export_templates_download_url`
+      still need to be configured to download the correct version.)'
     default: false
     required: false
   export_as_pack:
     description: Export project files as a .pck file.
     default: false
-    required: false 
+    required: false
   presets_to_export:
     description: A comma-separated list of export presets to export. If not specified, all presets will be exported.
     default: ''
@@ -82,18 +89,23 @@ inputs:
     default: ''
     required: false
   license_file_paths:
-    description: A comma separated list of the paths to any license files that should be copied into the export output. Paths are relative to the root of the git repository
+    description:
+      A comma separated list of the paths to any license files that should be copied into the export output. Paths are
+      relative to the root of the git repository
     default: ''
     required: false
   sm_keypair_alias:
     description: The keypair alias for codesigning with smctl
     default: ''
     required: false
-  csproj_name:
-    description: The name of the csproj file for C# projects 
+  pkcs11_config_path:
+    description: The path the PKCS#11 configuration file for codesigning with smctl
     default: ''
     required: false
-    
+  csproj_name:
+    description: The name of the csproj file for C# projects
+    default: ''
+    required: false
 
 outputs:
   build_directory:
@@ -104,5 +116,5 @@ outputs:
     description: The directory containing archived exports if "archive_output" is set.
 
 runs:
-  using: 'node20'
+  using: 'node24'
   main: 'dist/index.js'

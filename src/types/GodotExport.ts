@@ -4,7 +4,6 @@ export interface ExportPresets {
 
 interface ExportPresetBase {
   name: string;
-  // eslint-disable-next-line @typescript-eslint/naming-convention
   export_path: string;
 }
 
@@ -18,7 +17,6 @@ interface MacOsExportPreset extends ExportPresetBase {
 }
 
 interface MacOsExportPresetOptions {
-  // eslint-disable-next-line @typescript-eslint/naming-convention
   'notarization/notarization': string;
 }
 

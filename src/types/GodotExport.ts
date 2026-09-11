@@ -5,6 +5,7 @@ export interface ExportPresets {
 interface ExportPresetBase {
   name: string;
   export_path: string;
+  custom_features: string;
 }
 
 interface NonMacExportPreset extends ExportPresetBase {
@@ -29,4 +30,9 @@ export type BuildResult = {
   directoryEntryCount: number;
   preset: ExportPreset;
   archivePath?: string;
+};
+
+export type FeatureFlag = {
+  flagName: string;
+  defineConstant: string;
 };

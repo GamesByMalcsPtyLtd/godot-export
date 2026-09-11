@@ -1,6 +1,7 @@
 import * as core from '@actions/core';
 import path from 'path';
 import * as os from 'os';
+import { FeatureFlag } from './types/GodotExport.js';
 
 const ARCHIVE_OUTPUT = core.getBooleanInput('archive_output');
 const ARCHIVE_PREFIX = core.getInput('archive_prefix');
@@ -27,9 +28,13 @@ const CS_PROJ_NAME = core.getInput('csproj_name');
 
 function getCommaSeparatedInput(name: string): string[] | null {
   const inputString = core.getInput(name).trim();
+  return parseCommaSeperatedString(inputString);
+}
+
+export function parseCommaSeperatedString(text: string): string[] | null {
   let input: string[] | null = null;
-  if (inputString !== '') {
-    input = inputString.split(',').map(s => s.trim());
+  if (text !== '') {
+    input = text.split(',').map(s => s.trim());
     if (input.length === 0) input = null;
   }
   return input;
@@ -52,6 +57,29 @@ try {
   core.warning('Malformed license_file_paths input. No license files will be added to the export result.');
 }
 const LICENSE_FILE_PATHS = licenseFilePaths;
+
+// Parse feature flags
+let featureFlags: FeatureFlag[] | null = null;
+try {
+  const rawFlags = getCommaSeparatedInput('feature_flags');
+  if (rawFlags != null) {
+    featureFlags = [];
+    const pairs = Math.floor(rawFlags.length / 2);
+    for (let i = 0; i < pairs; i++) {
+      featureFlags.push({
+        flagName: rawFlags[i * 2],
+        defineConstant: rawFlags[i * 2 + 1],
+      });
+    }
+    if (rawFlags.length % 2 !== 0) {
+      core.warning('feature_flags input should contain pairs of inputs. Ignoring the last element.');
+    }
+  }
+} catch {
+  core.warning('Malformed feature_flags input. No feature flags will be used in the export.');
+}
+
+const FEATURE_FLAGS = featureFlags;
 
 const GODOT_WORKING_PATH = path.resolve(path.join(os.homedir(), '/.local/share/godot'));
 const GODOT_EXPORT_TEMPLATES_PATH = path.resolve(
@@ -100,4 +128,5 @@ export {
   SM_KEYPAIR_ALIAS,
   PKCS11_CONFIG_PATH,
   CS_PROJ_NAME,
+  FEATURE_FLAGS,
 };

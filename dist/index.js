@@ -77747,9 +77747,12 @@ const PKCS11_CONFIG_PATH = getInput('pkcs11_config_path');
 const CS_PROJ_NAME = getInput('csproj_name');
 function getCommaSeparatedInput(name) {
     const inputString = getInput(name).trim();
+    return parseCommaSeperatedString(inputString);
+}
+function parseCommaSeperatedString(text) {
     let input = null;
-    if (inputString !== '') {
-        input = inputString.split(',').map(s => s.trim());
+    if (text !== '') {
+        input = text.split(',').map(s => s.trim());
         if (input.length === 0)
             input = null;
     }
@@ -77773,6 +77776,28 @@ catch {
     warning('Malformed license_file_paths input. No license files will be added to the export result.');
 }
 const LICENSE_FILE_PATHS = licenseFilePaths;
+// Parse feature flags
+let featureFlags = null;
+try {
+    const rawFlags = getCommaSeparatedInput('feature_flags');
+    if (rawFlags != null) {
+        featureFlags = [];
+        const pairs = Math.floor(rawFlags.length / 2);
+        for (let i = 0; i < pairs; i++) {
+            featureFlags.push({
+                flagName: rawFlags[i * 2],
+                defineConstant: rawFlags[i * 2 + 1],
+            });
+        }
+        if (rawFlags.length % 2 !== 0) {
+            warning('feature_flags input should contain pairs of inputs. Ignoring the last element.');
+        }
+    }
+}
+catch {
+    warning('Malformed feature_flags input. No feature flags will be used in the export.');
+}
+const FEATURE_FLAGS = featureFlags;
 const GODOT_WORKING_PATH = path__default.resolve(path__default.join(os.homedir(), '/.local/share/godot'));
 const GODOT_EXPORT_TEMPLATES_PATH = path__default.resolve(path__default.join(os.homedir(), process.platform === 'darwin'
     ? 'Library/Application Support/Godot/export_templates'
@@ -78151,6 +78176,7 @@ async function doExport() {
             endGroup();
             continue;
         }
+        configureFeatureFlags(preset);
         if (EXPORT_PACK_ONLY) {
             executablePath += '.pck';
         }
@@ -78346,6 +78372,29 @@ async function copyLicenseFiles(buildDir) {
     for (const filePath of LICENSE_FILE_PATHS) {
         await cp(filePath, buildDir);
     }
+}
+function configureFeatureFlags(preset) {
+    if (!CS_PROJ_NAME || FEATURE_FLAGS == null)
+        return;
+    startGroup('🚩 Configuring Feature Flags');
+    const enabledFeatures = parseCommaSeperatedString(preset.custom_features) ?? [];
+    const csProjPath = path.join(GODOT_PROJECT_PATH, `${CS_PROJ_NAME}.csproj`);
+    let csProjText = fs.readFileSync(csProjPath, 'utf8');
+    for (let i = 0; i < FEATURE_FLAGS.length; i++) {
+        const flag = FEATURE_FLAGS[i];
+        if (enabledFeatures.some(enabled => enabled == flag.flagName)) {
+            info(`Enabling feature flag: ${flag.flagName}-${flag.defineConstant}`);
+            const commented = new RegExp(`^\\s*<!--\\s*<DefineConstants>\\$\\(DefineConstants\\);${flag.defineConstant}<\\/DefineConstants>\\s*-->`, 'm');
+            csProjText = csProjText.replace(commented, `      <DefineConstants>$(DefineConstants);${flag.defineConstant}</DefineConstants>`);
+        }
+        else {
+            info(`Disabling feature flag: ${flag.flagName}-${flag.defineConstant}`);
+            const unCommented = new RegExp(`^\\s*<DefineConstants>\\$\\(DefineConstants\\);${flag.defineConstant}<\\/DefineConstants>`, 'm');
+            csProjText = csProjText.replace(unCommented, `      <!-- <DefineConstants>$(DefineConstants);${flag.defineConstant}</DefineConstants> -->`);
+        }
+    }
+    fs.writeFileSync(csProjPath, csProjText, 'utf8');
+    endGroup();
 }
 
 async function zipBuildResults(buildResults) {

@@ -32,6 +32,8 @@ import {
   SM_KEYPAIR_ALIAS,
   CS_PROJ_NAME,
   PKCS11_CONFIG_PATH,
+  FEATURE_FLAGS,
+  parseCommaSeperatedString,
 } from './constants.js';
 import { autoConvertAppStoreConnectAPIKey, waitForNotarizationThenStaple } from './rcodesign.js';
 
@@ -412,6 +414,8 @@ async function doExport(): Promise<BuildResult[]> {
       continue;
     }
 
+    configureFeatureFlags(preset);
+
     if (EXPORT_PACK_ONLY) {
       executablePath += '.pck';
     }
@@ -644,6 +648,41 @@ async function copyLicenseFiles(buildDir: string): Promise<void> {
   for (const filePath of LICENSE_FILE_PATHS) {
     await io.cp(filePath, buildDir);
   }
+}
+
+function configureFeatureFlags(preset: ExportPreset) {
+  if (!CS_PROJ_NAME || FEATURE_FLAGS == null) return;
+  core.startGroup('🚩 Configuring Feature Flags');
+  const enabledFeatures = parseCommaSeperatedString(preset.custom_features) ?? [];
+  const csProjPath = path.join(GODOT_PROJECT_PATH, `${CS_PROJ_NAME}.csproj`);
+  let csProjText = fs.readFileSync(csProjPath, 'utf8');
+
+  for (let i = 0; i < FEATURE_FLAGS.length; i++) {
+    const flag = FEATURE_FLAGS[i];
+    if (enabledFeatures.some(enabled => enabled == flag.flagName)) {
+      core.info(`Enabling feature flag: ${flag.flagName}-${flag.defineConstant}`);
+      const commented: RegExp = new RegExp(
+        `^\\s*<!--\\s*<DefineConstants>\\$\\(DefineConstants\\);${flag.defineConstant}<\\/DefineConstants>\\s*-->`,
+        'm',
+      );
+      csProjText = csProjText.replace(
+        commented,
+        `      <DefineConstants>$(DefineConstants);${flag.defineConstant}</DefineConstants>`,
+      );
+    } else {
+      core.info(`Disabling feature flag: ${flag.flagName}-${flag.defineConstant}`);
+      const unCommented: RegExp = new RegExp(
+        `^\\s*<DefineConstants>\\$\\(DefineConstants\\);${flag.defineConstant}<\\/DefineConstants>`,
+        'm',
+      );
+      csProjText = csProjText.replace(
+        unCommented,
+        `      <!-- <DefineConstants>$(DefineConstants);${flag.defineConstant}</DefineConstants> -->`,
+      );
+    }
+  }
+  fs.writeFileSync(csProjPath, csProjText, 'utf8');
+  core.endGroup();
 }
 
 export { exportBuilds };

@@ -106,6 +106,12 @@ inputs:
     description: The name of the csproj file for C# projects
     default: ''
     required: false
+  feature_flags:
+    description:
+      The feature flags + the C# define constants to set for them. Defined as a comma seperated list of pairs of
+      "feature_flag, define_constant"
+    default: ''
+    required: false
 
 outputs:
   build_directory:
